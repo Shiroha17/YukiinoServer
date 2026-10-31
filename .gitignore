@@ -1,0 +1,8 @@
+.zig-cache/
+zig-out/
+*.exe
+*.pdb
+
+Resources/
+
+AGENTS.md
