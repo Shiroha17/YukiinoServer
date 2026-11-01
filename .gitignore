@@ -3,6 +3,7 @@ zig-out/
 *.exe
 *.pdb
 
+logs/
 Resources/
 
 AGENTS.md

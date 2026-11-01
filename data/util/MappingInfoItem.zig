@@ -1,0 +1,5 @@
+ItemID: u32 = 0,
+ItemNum: u32 = 0,
+MinCount: u32 = 0,
+MaxCount: u32 = 0,
+Chance: u32 = 100,

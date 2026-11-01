@@ -28,6 +28,26 @@ pub fn build(b: *std.Build) void {
     // to our consumers. We must give it a name because a Zig package can expose
     // multiple modules and consumers will need to be able to specify which
     // module they want to access.
+    const enums_mod = b.createModule(.{
+        .root_source_file = b.path("data/enums/enums.zig"),
+        .target = target,
+    });
+    const util_mod = b.createModule(.{
+        .root_source_file = b.path("data/util/util.zig"),
+        .target = target,
+    });
+    const data_mod = b.createModule(.{
+        .root_source_file = b.path("data/game_data.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "enums", .module = enums_mod },
+            .{ .name = "util", .module = util_mod },
+        },
+    });
+    const logger_mod = b.createModule(.{
+        .root_source_file = b.path("logger/logger.zig"),
+        .target = target,
+    });
     const mod = b.addModule("YukiinoServer", .{
         // The root source file is the "entry point" of this module. Users of
         // this module will only be able to access public declarations contained
@@ -39,6 +59,12 @@ pub fn build(b: *std.Build) void {
         // Later on we'll use this module as the root module of a test executable
         // which requires us to specify a target.
         .target = target,
+        .imports = &.{
+            .{
+                .name = "data",
+                .module = data_mod,
+            },
+        },
     });
 
     // Here we define an executable. An executable needs to have a root module
@@ -79,6 +105,7 @@ pub fn build(b: *std.Build) void {
                 // can be extremely useful in case of collisions (which can happen
                 // importing modules from different packages).
                 .{ .name = "YukiinoServer", .module = mod },
+                .{ .name = "logger", .module = logger_mod },
             },
         }),
     });

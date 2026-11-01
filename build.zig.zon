@@ -72,6 +72,8 @@
         "build.zig",
         "build.zig.zon",
         "src",
+        "data",
+        "logger",
         // For example...
         //"LICENSE",
         //"README.md",

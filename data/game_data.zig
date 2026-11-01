@@ -12,6 +12,7 @@ pub const GameData = struct {
         defer res_dir.close(io);
 
         return .{
+            // load all excels
             .excel = try excel_manager.Excels.load(arena, gpa, io, res_dir),
         };
     }
