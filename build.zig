@@ -1,4 +1,5 @@
 const std = @import("std");
+const protobuf = @import("protobuf");
 
 // Although this function looks imperative, it does not perform the build
 // directly and instead it mutates the build graph (`b`) that will be then
@@ -16,6 +17,23 @@ pub fn build(b: *std.Build) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
+    const protobuf_dep = b.dependency("protobuf", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const protoc_step = protobuf.RunProtocStep.create(protobuf_dep.builder, b.graph.host, .{
+        .destination_directory = b.path("protocol"),
+        .source_files = &.{b.path("protocol/StarRail.proto")},
+        .include_directories = &.{b.path("protocol")},
+    });
+    const gen_proto = b.step("gen-proto", "Generate Zig bindings from StarRail.proto");
+    gen_proto.dependOn(protoc_step.step);
+
+    const protocol_mod = b.createModule(.{
+        .root_source_file = b.path("protocol/protocol.pb.zig"),
+        .target = target,
+        .imports = &.{.{ .name = "protobuf", .module = protobuf_dep.module("protobuf") }},
+    });
     // It's also possible to define more custom flags to toggle optional features
     // of this build script using `b.option()`. All defined flags (including
     // target and optimize options) will be listed when running `zig build --help`
@@ -48,6 +66,13 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("logger/logger.zig"),
         .target = target,
     });
+    const httpserver_mod = b.createModule(.{
+        .root_source_file = b.path("httpserver/http_server.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "protocol", .module = protocol_mod },
+        },
+    });
     const mod = b.addModule("YukiinoServer", .{
         // The root source file is the "entry point" of this module. Users of
         // this module will only be able to access public declarations contained
@@ -64,6 +89,7 @@ pub fn build(b: *std.Build) void {
                 .name = "data",
                 .module = data_mod,
             },
+            .{ .name = "protocol", .module = protocol_mod },
         },
     });
 
@@ -106,6 +132,8 @@ pub fn build(b: *std.Build) void {
                 // importing modules from different packages).
                 .{ .name = "YukiinoServer", .module = mod },
                 .{ .name = "logger", .module = logger_mod },
+                .{ .name = "protocol", .module = protocol_mod },
+                .{ .name = "httpserver", .module = httpserver_mod },
             },
         }),
     });

@@ -223,7 +223,7 @@ pub fn Excel(comptime Row: type) type {
                 entry.value_ptr.* = @intCast(index);
             }
 
-            log.info("loaded {d} {s} excels", .{ excel_name, rows.items.len });
+            log.info("loaded {d} {s} excels", .{ rows.items.len, excel_name });
 
             return .{
                 .rows = rows.items,
