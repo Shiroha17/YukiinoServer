@@ -66,12 +66,14 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("logger/logger.zig"),
         .target = target,
     });
+    const http_dep = b.dependency("httpz", .{
+        .target = target,
+        .optimize = optimize,
+    });
     const httpserver_mod = b.createModule(.{
         .root_source_file = b.path("httpserver/http_server.zig"),
         .target = target,
-        .imports = &.{
-            .{ .name = "protocol", .module = protocol_mod },
-        },
+        .imports = &.{ .{ .name = "protocol", .module = protocol_mod }, .{ .name = "httpz", .module = http_dep.module("httpz") } },
     });
     const mod = b.addModule("YukiinoServer", .{
         // The root source file is the "entry point" of this module. Users of
