@@ -18,11 +18,11 @@ const HotfixInfo = struct {
     HotfixData: json.ArrayHashMap(Hotfix) = .{},
 };
 
-pub fn GetLocalHotfix(io: Io, arena: Allocator, version: []const u8) !?Hotfix {
-    const file_bytes = try std.Io.Dir.cwd().readFileAlloc(io, "config/hotfix.json", arena, .unlimited);
-    defer arena.free(file_bytes);
+pub fn GetLocalHotfix(io: Io, allocator: Allocator, version: []const u8) !?Hotfix {
+    const file_bytes = try std.Io.Dir.cwd().readFileAlloc(io, "config/hotfix.json", allocator, .unlimited);
+    defer allocator.free(file_bytes);
 
-    const parsed_hotfix = try json.parseFromSliceLeaky(HotfixInfo, arena, file_bytes, .{
+    const parsed_hotfix = try json.parseFromSliceLeaky(HotfixInfo, allocator, file_bytes, .{
         .ignore_unknown_fields = true,
         .allocate = .alloc_always,
     });
@@ -33,18 +33,18 @@ pub fn GetLocalHotfix(io: Io, arena: Allocator, version: []const u8) !?Hotfix {
     return hotfix;
 }
 
-pub fn PutHotfix(io: Io, arena: Allocator, version: []const u8, hotfix: Hotfix) !void {
-    const file_bytes = try std.Io.Dir.cwd().readFileAlloc(io, "config/hotfix.json", arena, .unlimited);
-    defer arena.free(file_bytes);
+pub fn PutHotfix(io: Io, allocator: Allocator, version: []const u8, hotfix: Hotfix) !void {
+    const file_bytes = try std.Io.Dir.cwd().readFileAlloc(io, "config/hotfix.json", allocator, .unlimited);
+    defer allocator.free(file_bytes);
 
-    var parsed_hotfix = try json.parseFromSliceLeaky(HotfixInfo, arena, file_bytes, .{
+    var parsed_hotfix = try json.parseFromSliceLeaky(HotfixInfo, allocator, file_bytes, .{
         .ignore_unknown_fields = true,
         .allocate = .alloc_always,
     });
 
-    try parsed_hotfix.HotfixData.map.put(arena, version, hotfix);
+    try parsed_hotfix.HotfixData.map.put(allocator, version, hotfix);
 
-    var out: Io.Writer.Allocating = .init(arena);
+    var out: Io.Writer.Allocating = .init(allocator);
     try json.Stringify.value(parsed_hotfix, .{ .whitespace = .indent_4 }, &out.writer);
 
     try Io.Dir.cwd().writeFile(io, .{
@@ -55,21 +55,21 @@ pub fn PutHotfix(io: Io, arena: Allocator, version: []const u8, hotfix: Hotfix) 
 
 pub fn FetchHotfix(
     io: Io,
-    arena: Allocator,
+    allocator: Allocator,
     version: []const u8,
     dispatch_seed: []const u8,
 ) !?Hotfix {
     if (version.len == 0) return null;
 
     const base_url = GetGateWayUrl(version) orelse return null;
-    const full_url = try std.fmt.allocPrint(arena, "{s}?version={s}&dispatch_seed={s}&language_type=1&platform_type=2&channel_id=1&sub_channel_id=1&is_need_url=1&account_type=1", .{ base_url, version, dispatch_seed });
+    const full_url = try std.fmt.allocPrint(allocator, "{s}?version={s}&dispatch_seed={s}&language_type=1&platform_type=2&channel_id=1&sub_channel_id=1&is_need_url=1&account_type=1", .{ base_url, version, dispatch_seed });
 
     log.info("fetching hotfix from {s}", .{version});
 
-    var client: std.http.Client = .{ .allocator = arena, .io = io };
+    var client: std.http.Client = .{ .allocator = allocator, .io = io };
     defer client.deinit();
 
-    var body: Io.Writer.Allocating = .init(arena);
+    var body: Io.Writer.Allocating = .init(allocator);
     const result = try client.fetch(.{
         .location = .{ .url = full_url },
         .response_writer = &body.writer,
@@ -84,11 +84,11 @@ pub fn FetchHotfix(
     if (encoded.len == 0) return null;
 
     const decoder = std.base64.standard.Decoder;
-    const decoded_bytes = try arena.alloc(u8, try decoder.calcSizeForSlice(encoded));
+    const decoded_bytes = try allocator.alloc(u8, try decoder.calcSizeForSlice(encoded));
     try decoder.decode(decoded_bytes, encoded);
 
     var reader: Io.Reader = .fixed(decoded_bytes);
-    const gateway = try proto.GateServer.decode(&reader, arena);
+    const gateway = try proto.GateServer.decode(&reader, allocator);
 
     if (gateway.asset_bundle_url.len == 0) return null;
 
@@ -99,7 +99,7 @@ pub fn FetchHotfix(
         .ifix_url = gateway.ifix_url,
     };
 
-    try PutHotfix(io, arena, arena, version, hotfix);
+    try PutHotfix(io, allocator, version, hotfix);
     return hotfix;
 }
 

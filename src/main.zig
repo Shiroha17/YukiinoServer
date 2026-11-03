@@ -3,6 +3,7 @@ const Io = std.Io;
 
 const YukiinoServer = @import("YukiinoServer");
 const httpserver = @import("httpserver");
+const database = @import("database");
 
 const logger = @import("logger");
 pub const std_options: std.Options = .{ .logFn = logger.logFn };
@@ -15,6 +16,9 @@ pub fn main(init: std.process.Init) !void {
 
     logger.init(io) catch |err| std.log.warn("log file disabled: {t}", .{err});
     defer logger.deinit(io);
+
+    try database.init(init.gpa, io);
+    defer database.deinit();
 
     // const game_data = try YukiinoServer.GameData.load(arena, init.gpa, io, "Resources");
 

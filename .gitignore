@@ -3,6 +3,9 @@ zig-out/
 zig-pkg/
 *.exe
 *.pdb
+*.db
+*.db-shm
+*.db-wal
 
 logs/
 Resources/

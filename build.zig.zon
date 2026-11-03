@@ -40,6 +40,10 @@
             .url = "git+https://github.com/karlseguin/http.zig?ref=master#1bb71ff128a044b1645df91046473c38abbf965c",
             .hash = "httpz-0.0.0-PNVzrFNMCQBySpfunggKlQQoD_FvF3yADlqg3xfbdX8p",
         },
+        .zqlite = .{
+            .url = "https://github.com/karlseguin/zqlite.zig/archive/refs/heads/master.tar.gz",
+            .hash = "zqlite-0.0.1-RWLaY4Y8nADz2l5aBE-JVyDyM3sZzHjq0agNykuVZKqQ",
+        },
     },
     .paths = .{
         "build.zig",
@@ -49,6 +53,7 @@
         "data",
         "logger",
         "httpserver",
+        "database",
         // For example...
         //"LICENSE",
         //"README.md",

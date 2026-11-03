@@ -66,6 +66,17 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("logger/logger.zig"),
         .target = target,
     });
+    const zqlite_dep = b.dependency("zqlite", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const database_mod = b.createModule(.{
+        .root_source_file = b.path("database/database.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "zqlite", .module = zqlite_dep.module("zqlite") },
+        },
+    });
     const http_dep = b.dependency("httpz", .{
         .target = target,
         .optimize = optimize,
@@ -73,7 +84,11 @@ pub fn build(b: *std.Build) void {
     const httpserver_mod = b.createModule(.{
         .root_source_file = b.path("httpserver/http_server.zig"),
         .target = target,
-        .imports = &.{ .{ .name = "protocol", .module = protocol_mod }, .{ .name = "httpz", .module = http_dep.module("httpz") } },
+        .imports = &.{
+            .{ .name = "protocol", .module = protocol_mod },
+            .{ .name = "httpz", .module = http_dep.module("httpz") },
+            .{ .name = "database", .module = database_mod },
+        },
     });
     const mod = b.addModule("YukiinoServer", .{
         // The root source file is the "entry point" of this module. Users of
@@ -92,6 +107,7 @@ pub fn build(b: *std.Build) void {
                 .module = data_mod,
             },
             .{ .name = "protocol", .module = protocol_mod },
+            .{ .name = "database", .module = database_mod },
         },
     });
 
@@ -136,6 +152,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "logger", .module = logger_mod },
                 .{ .name = "protocol", .module = protocol_mod },
                 .{ .name = "httpserver", .module = httpserver_mod },
+                .{ .name = "database", .module = database_mod },
             },
         }),
     });
@@ -190,12 +207,18 @@ pub fn build(b: *std.Build) void {
     // A run step that will run the second test executable.
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
+    const httpserver_tests = b.addTest(.{
+        .root_module = httpserver_mod,
+    });
+    const run_httpserver_tests = b.addRunArtifact(httpserver_tests);
+
     // A top level step for running all tests. dependOn can be called multiple
     // times and since the two run steps do not depend on one another, this will
     // make the two of them run in parallel.
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+    test_step.dependOn(&run_httpserver_tests.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //

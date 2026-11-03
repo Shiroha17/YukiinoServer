@@ -5,13 +5,14 @@ const httpz = @import("httpz");
 const proto = @import("protocol");
 const http_server = @import("http_server.zig");
 const hotfix = @import("hotfix.zig");
+const login = @import("login.zig");
 const log = std.log.scoped(.httpserver);
 
 const Address = "127.0.0.1";
 const Port = 1017;
 
-pub fn run(io: Io, gpa: std.mem.Allocator) !void {
-    var server = try httpz.Server(Io).init(io, gpa, .{ .address = .localhost(Port) }, io);
+pub fn run(io: Io, allocator: std.mem.Allocator) !void {
+    var server = try httpz.Server(Io).init(io, allocator, .{ .address = .localhost(Port) }, io);
     defer {
         server.stop();
         server.deinit();
@@ -22,11 +23,19 @@ pub fn run(io: Io, gpa: std.mem.Allocator) !void {
     router.get("/query_dispatch", queryDispatch, .{});
     router.get("/query_gateway", queryGateWay, .{});
 
+    router.post("/account/risky/api/check", login.riskyCheck, .{});
+    router.post("/:game_key/mdk/shield/api/login", login.shieldLogin, .{});
+    router.post("/:game_key/mdk/shield/api/verify", login.shieldVerify, .{});
+    router.post("/:game_key/account/ma-passport/api/appLoginByPassword", login.passportLogin, .{});
+    router.post("/account/ma-cn-passport/app/loginByPassword", login.passportLogin, .{});
+    router.post("/account/ma-cn-session/app/verify", login.sessionVerify, .{});
+    router.post("/:game_key/combo/granter/login/v2/login", login.comboTokenLogin, .{});
+
     log.info("httpserver is listening at localhost:{d}", .{Port});
     try server.listen();
 }
 
-pub fn queryDispatch(req: *httpz.Request, res: *httpz.Response) !void {
+pub fn queryDispatch(_: Io, req: *httpz.Request, res: *httpz.Response) !void {
     log.info("{s}", .{req.url.path});
 
     var dispatch: proto.Dispatch = .{};
@@ -71,13 +80,17 @@ pub fn queryGateWay(io: Io, req: *httpz.Request, res: *httpz.Response) !void {
     res.body = try encodeMessage(res.arena, gate_way);
 }
 
-fn encodeMessage(arena: std.mem.Allocator, message: anytype) ![]const u8 {
-    var encoded: Io.Writer.Allocating = .init(arena);
-    try message.encode(&encoded.writer, arena);
+fn encodeMessage(allocator: std.mem.Allocator, message: anytype) ![]const u8 {
+    var encoded: Io.Writer.Allocating = .init(allocator);
+    try message.encode(&encoded.writer, allocator);
 
     const bytes = encoded.written();
     const encoder = std.base64.standard.Encoder;
-    const text = try arena.alloc(u8, encoder.calcSize(bytes.len));
+    const text = try allocator.alloc(u8, encoder.calcSize(bytes.len));
 
     return encoder.encode(text, bytes);
+}
+
+test {
+    _ = login;
 }
